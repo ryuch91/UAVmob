@@ -7,10 +7,12 @@ class Map:
         self.sizeX = map_size[0]
         self.sizeY = map_size[1]
         self.mapSize = map_size
+        self.scene = scene
         self.Obs = self.init_obs(scene)
         self.PheMap = self.init_phe()
         self.initPheMap = self.init_phe() # 초기 pheMap을 재활용하기 위한 변수
         self.Targets = self.init_target(N_targets)
+        self.nT = N_targets
 
     # 시나리오에 따른 장애물 초기화, 1: no obs, 2: many small obs, 3: few huge obs
     def init_obs(self, scene):

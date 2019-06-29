@@ -3,6 +3,7 @@ import matplotlib.colors as clrs
 from matplotlib import animation
 from numpy import array, mgrid, zeros, linspace
 from numpy.random import choice
+import csv
 
 from src.models import agent
 import src.conf as cfg
@@ -19,6 +20,9 @@ class Simulation:
 
         self.figSize = (self.map.sizeX, self.map.sizeY)
 
+        self.nlistST = [] # 스텝별 센싱된 타겟 개수를 리스트로 저장
+        self.nlistlistST = [] # 타겟 개수 리스트의 리스트
+
     # nUAV x 반복횟수 만큼 시뮬 진행. 각 시뮬은 step 수 만큼 진행
     def run(self):
 
@@ -27,22 +31,33 @@ class Simulation:
             # UAV 생성 및 초기화
             nUAVs = self.nUAVs[i]
             swarm = AgentSwarm(nUAVs)
-            swarm.set_map_info(self.map.Obs, self.map.mapSize)
+            swarm.set_map_info(self.map.Obs, self.map.mapSize, self.map.Targets)
 
             for j in range(self.nRepeat):
 
                 #각 시뮬 순서 : 1.이동가능방향계산/2.페로몬정보전달/3.무빙-전체페로몬맵업뎃-전달 반복/4.페로맵리셋/5.스웜리셋
-                # swarm.cal_movable_blocks()
-                # swarm.update_phe_info(self.map.PheMap)
-                # for k in range(self.nStep):
-                #     swarm.cal_and_move_rand()
-                #     self.map.update_phe(swarm.get_all_pos())
-                #     swarm.update_phe_info(self.map.PheMap)
-                #     self.draw('rand',i,j,k) # 테스트용 그리기
-                #     swarm.print_path()# 테스트용 출력
-                # self.map.reboot_phe()
-                # swarm.init_agents(nUAVs)
+                swarm.cal_movable_blocks()
+                swarm.update_phe_info(self.map.PheMap)
+                for k in range(self.nStep):
+                    swarm.cal_and_move_rand()
+                    self.map.update_phe(swarm.get_all_pos())
+                    swarm.update_phe_info(self.map.PheMap)
 
+                    swarm.sense_target()
+                    self.nlistST.append(swarm.count_sensed_target())
+
+                self.map.reboot_phe()
+                swarm.init_agents(nUAVs)
+
+                self.nlistlistST.append(self.nlistST)
+                self.init_metric()
+
+                print(str(i) + '-' + str(j) + '-rand' + ' finished!')  # 진행사항을 알기위한 콘솔 출력
+
+            self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Rand')
+            self.init_upper_metric()
+
+            for j in range(self.nRepeat):
 
                 swarm.cal_movable_blocks()
                 swarm.update_phe_info(self.map.PheMap)
@@ -50,23 +65,43 @@ class Simulation:
                     swarm.cal_and_move_phe()
                     self.map.update_phe(swarm.get_all_pos())
                     swarm.update_phe_info(self.map.PheMap)
-                    self.draw('phe',i, j, k)  # 테스트용 그리기
-                self.map.reboot_phe()
-                self.map.print_pheMap()
-                swarm.init_agents(nUAVs)
-                #
-                #
-                # swarm.cal_movable_blocks()
-                # swarm.update_phe_info(self.map.PheMap)
-                # for k in range(self.nStep):
-                #     swarm.cal_and_move_flex()
-                #     self.map.update_phe(swarm.get_all_pos())
-                #     swarm.update_phe_info(self.map.PheMap)
-                #     self.draw('flex',i, j, k)  # 테스트용 그리기
-                # self.map.reboot_phe()
-                # swarm.init_agents(nUAVs)
 
-                print(str(i)+'-'+str(j)+' finished!') # 진행사항을 알기위한 콘솔 출력
+                    # Metric 0 을 위한 타겟 수 기록
+                    swarm.sense_target()
+                    self.nlistST.append(swarm.count_sensed_target())
+
+                self.map.reboot_phe()
+                swarm.init_agents(nUAVs)
+
+                self.nlistlistST.append(self.nlistST)
+                self.init_metric() # 메트릭 관련 변수들(새 repeat 마다 초기화되어야하는것들) 초기화
+
+                print(str(i) + '-' + str(j) + '-phe' + ' finished!')  # 진행사항을 알기위한 콘솔 출력
+
+            self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Phe')
+            self.init_upper_metric()
+
+            for j in range(self.nRepeat):
+                swarm.cal_movable_blocks()
+                swarm.update_phe_info(self.map.PheMap)
+                for k in range(self.nStep):
+                    swarm.cal_and_move_flex()
+                    self.map.update_phe(swarm.get_all_pos())
+                    swarm.update_phe_info(self.map.PheMap)
+
+                    swarm.sense_target()
+                    self.nlistST.append(swarm.count_sensed_target())
+
+                self.map.reboot_phe()
+                swarm.init_agents(nUAVs)
+
+                self.nlistlistST.append(self.nlistST)
+                self.init_metric()
+
+                print(str(i)+'-'+str(j)+'-flex'+' finished!') # 진행사항을 알기위한 콘솔 출력
+
+            self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Flex')
+            self.init_upper_metric() # 전체 stepxrepeat 끝날때마다 초기화되어야 하는 것들 초기화
 
     def draw(self,name, i_n,j_repeat,k_step):
         cmapA = plt.get_cmap('winter')
@@ -88,6 +123,26 @@ class Simulation:
         fig.savefig(fileName,bbox_inches='tight', facecolor=fig.get_facecolor())
 
         plt.close('all')
+
+    def init_metric(self):
+        self.nlistST = []
+
+    def init_upper_metric(self):
+        self.nlistST = []
+        self.nlistlistST = []
+
+    # Met0: 타겟 수 측정을 위한 csv 파일에 작성 (data는 list of list)
+    def write_csv_metric0(self, data, mapSize, scene, nT, nU, method):
+        new_data = list(zip(*data))
+
+        filename = 'Map'+str(mapSize[0])+'_Scene'+str(scene)+'_T'+str(nT)+'_U'+str(nU)+method+'_Met0.csv'
+        f = open(filename, 'w', newline='')
+        wr = csv.writer(f)
+
+        for row in new_data:
+            wr.writerow(row)
+
+        f.close()
 
 
 if __name__ == '__main__':

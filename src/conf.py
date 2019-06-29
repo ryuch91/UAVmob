@@ -10,7 +10,7 @@ CONFIG = {'Nest':(1,1),
           'OBS_PHE' : -1.0,
           'Scene' : 1,
           'N_Targets' : 10,
-          'N_Repeat': 1,
+          'N_Repeat': 3,
           'Flex_Thr': 0.3
           }
 

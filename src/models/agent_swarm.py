@@ -9,12 +9,17 @@ class AgentSwarm:
         self.Obs = []
         self.mapSize = (1,1)
 
+        self.targets = []
+        self.sensedTargets=[]
+
     # initialize agents and deploy them to Nest position
     def init_agents(self, N_agents):
         self.agents = []
         for i in range(N_agents):
             agent = Agent(CONFIG['Nest'])
             self.agents.append(agent)
+
+        self.sensedTargets = [] # 발견된 타겟 목록도 여기서 초기화
 
     # return all agents' position in list
     def get_all_pos(self):
@@ -50,9 +55,10 @@ class AgentSwarm:
         self.Obs = Obs
 
     # 맵 데이터(장애물, 맵사이즈) 받아올 때 사용, 초기 한번만 실행
-    def set_map_info(self,Obs,mapSize):
+    def set_map_info(self,Obs,mapSize, targets):
         self.Obs = Obs
         self.mapSize = mapSize
+        self.targets = targets
 
     # 전체 페로몬 맵의 정보를 받아서 각 agent의 pheMap을 업데이트
     def update_phe_info(self, pheMap):
@@ -99,3 +105,23 @@ class AgentSwarm:
 
         for i, agent in enumerate(self.agents):
             agent.numInCR = num_in_CR[i]
+
+    # 각 에이전트의 SR에 들어온 타겟을 체크하여 새로운 target이 발견되면 전체 swarm 의 sensedTarget에 추가
+    def sense_target(self):
+        sensedTargets = []
+        for agent in self.agents:
+            sensed = agent.sense_target(self.targets)
+            sensedTargets.extend(sensed)
+
+        sensedTargetsSet = set(sensedTargets)
+        sensedTargets = list(sensedTargetsSet)
+
+        for target in sensedTargets:
+            if target in self.sensedTargets:
+                pass
+            else:
+                self.sensedTargets.append(target)
+
+    # Metric 을 위해서, 발견된 타겟의 숫자를 리턴
+    def count_sensed_target(self):
+        return len(self.sensedTargets)

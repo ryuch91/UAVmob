@@ -97,3 +97,13 @@ class Agent:
             if new_pos not in self.movable_blocks:
                 new_pos = self.cal_next_pos_rand()
         return new_pos
+
+    # Sensing Range 안의 target을 검출하여 좌표 리스트를 반환
+    def sense_target(self, targets):
+        sensedTargets = []
+        if self.position in targets:
+            sensedTargets.append(self.position)
+        for block in self.movable_blocks:
+            if block in targets:
+                sensedTargets.append(block)
+        return sensedTargets
