@@ -12,6 +12,7 @@ class Map:
         self.PheMap = self.init_phe()
         self.initPheMap = self.init_phe() # 초기 pheMap을 재활용하기 위한 변수
         self.Targets = self.init_target(N_targets)
+        self.Cells = self.init_cells()
         self.nT = N_targets
 
     # 시나리오에 따른 장애물 초기화, 1: no obs, 2: many small obs, 3: few huge obs
@@ -61,6 +62,15 @@ class Map:
     # 초기의 페로몬맵을 저장해두었다가 재사용
     def reboot_phe(self):
         self.PheMap = copy.deepcopy(self.initPheMap)
+
+    # 초기의 움직일 수 있는 normal cell 들의 좌표를 저장(metric1 에 사용)
+    def init_cells(self):
+        cells = [(i,j) for i in range(self.sizeX) for j in range(self.sizeY)]
+        for cell in self.Obs:
+            if cell in cells:
+                cells.remove(cell)
+
+        return cells
 
     # 테스트용 : pheMap 콘솔에 출력
     def print_pheMap(self):

@@ -8,7 +8,7 @@ CONFIG = {'Nest':(1,1),
           'MAX_PHE' : 1.0,
           'MIN_PHE' : 0.0,
           'OBS_PHE' : -1.0,
-          'Scene' : 1,
+          'Scene' : 2,
           'N_Targets' : 10,
           'N_Repeat': 3,
           'Flex_Thr': 0.3

@@ -23,6 +23,10 @@ class Simulation:
         self.nlistST = [] # 스텝별 센싱된 타겟 개수를 리스트로 저장
         self.nlistlistST = [] # 타겟 개수 리스트의 리스트
 
+        self.leftCells = [] # 스텝별 스캔안된 셀들을 저장, 시뮬 직전에 초기화해야함
+        self.nlistLCs = [] # leftCells 개수를 리스트로 저장
+        self.nlistlistLCs = [] #leftCells 개수 리스트의 리스트
+
     # nUAV x 반복횟수 만큼 시뮬 진행. 각 시뮬은 step 수 만큼 진행
     def run(self):
 
@@ -35,29 +39,41 @@ class Simulation:
 
             for j in range(self.nRepeat):
 
+                # 필요한 메트릭 설정(e.g. init unscanned cell)
+                self.pre_init_metric()
+
                 #각 시뮬 순서 : 1.이동가능방향계산/2.페로몬정보전달/3.무빙-전체페로몬맵업뎃-전달 반복/4.페로맵리셋/5.스웜리셋
                 swarm.cal_movable_blocks()
                 swarm.update_phe_info(self.map.PheMap)
                 for k in range(self.nStep):
+
                     swarm.cal_and_move_rand()
                     self.map.update_phe(swarm.get_all_pos())
                     swarm.update_phe_info(self.map.PheMap)
 
+                    # Metric 측정 및 값 기록
+                    self.cal_left_cells(swarm)
+                    self.nlistLCs.append(len(self.leftCells))
                     swarm.sense_target()
                     self.nlistST.append(swarm.count_sensed_target())
 
                 self.map.reboot_phe()
                 swarm.init_agents(nUAVs)
 
+                # Metric 측정된 값들을 하나의 리스트에 기록
                 self.nlistlistST.append(self.nlistST)
-                self.init_metric()
+                self.nlistlistLCs.append(self.nlistLCs)
+                self.init_metric() # 메트릭 관련 변수들(새 repeat 마다 초기화되어야하는것들) 초기화
 
                 print(str(i) + '-' + str(j) + '-rand' + ' finished!')  # 진행사항을 알기위한 콘솔 출력
 
             self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Rand')
-            self.init_upper_metric()
+            self.write_csv_metric1(self.nlistlistLCs, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Rand')
+            self.init_upper_metric() # 전체 step x repeat 끝날때마다 초기화되어야 하는 것들 초기화
 
             for j in range(self.nRepeat):
+
+                self.pre_init_metric()
 
                 swarm.cal_movable_blocks()
                 swarm.update_phe_info(self.map.PheMap)
@@ -66,7 +82,8 @@ class Simulation:
                     self.map.update_phe(swarm.get_all_pos())
                     swarm.update_phe_info(self.map.PheMap)
 
-                    # Metric 0 을 위한 타겟 수 기록
+                    self.cal_left_cells(swarm)
+                    self.nlistLCs.append(len(self.leftCells))
                     swarm.sense_target()
                     self.nlistST.append(swarm.count_sensed_target())
 
@@ -74,14 +91,19 @@ class Simulation:
                 swarm.init_agents(nUAVs)
 
                 self.nlistlistST.append(self.nlistST)
-                self.init_metric() # 메트릭 관련 변수들(새 repeat 마다 초기화되어야하는것들) 초기화
+                self.nlistlistLCs.append(self.nlistLCs)
+                self.init_metric()
 
                 print(str(i) + '-' + str(j) + '-phe' + ' finished!')  # 진행사항을 알기위한 콘솔 출력
 
             self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Phe')
+            self.write_csv_metric1(self.nlistlistLCs, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Phe')
             self.init_upper_metric()
 
             for j in range(self.nRepeat):
+
+                self.pre_init_metric()
+
                 swarm.cal_movable_blocks()
                 swarm.update_phe_info(self.map.PheMap)
                 for k in range(self.nStep):
@@ -89,6 +111,8 @@ class Simulation:
                     self.map.update_phe(swarm.get_all_pos())
                     swarm.update_phe_info(self.map.PheMap)
 
+                    self.cal_left_cells(swarm)
+                    self.nlistLCs.append(len(self.leftCells))
                     swarm.sense_target()
                     self.nlistST.append(swarm.count_sensed_target())
 
@@ -96,12 +120,14 @@ class Simulation:
                 swarm.init_agents(nUAVs)
 
                 self.nlistlistST.append(self.nlistST)
+                self.nlistlistLCs.append(self.nlistLCs)
                 self.init_metric()
 
                 print(str(i)+'-'+str(j)+'-flex'+' finished!') # 진행사항을 알기위한 콘솔 출력
 
             self.write_csv_metric0(self.nlistlistST, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Flex')
-            self.init_upper_metric() # 전체 stepxrepeat 끝날때마다 초기화되어야 하는 것들 초기화
+            self.write_csv_metric1(self.nlistlistLCs, self.map.mapSize, self.map.scene, self.map.nT, nUAVs, 'Flex')
+            self.init_upper_metric()
 
     def draw(self,name, i_n,j_repeat,k_step):
         cmapA = plt.get_cmap('winter')
@@ -124,18 +150,49 @@ class Simulation:
 
         plt.close('all')
 
+    def pre_init_metric(self):
+        LCs = []
+        for cell in self.map.Cells:
+            LCs.append(cell)
+        self.leftCells = LCs
+
     def init_metric(self):
         self.nlistST = []
+        self.nlistLCs = []
 
     def init_upper_metric(self):
         self.nlistST = []
         self.nlistlistST = []
 
+        self.nlistLCs = []
+        self.nlistlistLCs = []
+
+    def cal_left_cells(self,swarm):
+        for agent in swarm.agents:
+            if agent.position in self.leftCells:
+                self.leftCells.remove(agent.position)
+            for block in agent.movable_blocks:
+                if block in self.leftCells:
+                    self.leftCells.remove(block)
+
     # Met0: 타겟 수 측정을 위한 csv 파일에 작성 (data는 list of list)
     def write_csv_metric0(self, data, mapSize, scene, nT, nU, method):
         new_data = list(zip(*data))
 
-        filename = 'Map'+str(mapSize[0])+'_Scene'+str(scene)+'_T'+str(nT)+'_U'+str(nU)+method+'_Met0.csv'
+        filename = 'Map'+str(mapSize[0])+'_Scene'+str(scene)+'_T'+str(nT)+'_U'+str(nU)+'_'+method+'_Met0.csv'
+        f = open(filename, 'w', newline='')
+        wr = csv.writer(f)
+
+        for row in new_data:
+            wr.writerow(row)
+
+        f.close()
+
+    # Met1: Unscanned cell 수 측정을 위한 csv 파일에 작성 (data 는 list of list)
+    def write_csv_metric1(self, data, mapSize, scene, nT, nU, method):
+        new_data = list(zip(*data))
+
+        filename = 'Map'+str(mapSize[0])+'_Scene'+str(scene)+'_T'+str(nT)+'_U'+str(nU)+'_'+method+'_Met1.csv'
         f = open(filename, 'w', newline='')
         wr = csv.writer(f)
 

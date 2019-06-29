@@ -12,6 +12,7 @@ class AgentSwarm:
         self.targets = []
         self.sensedTargets=[]
 
+
     # initialize agents and deploy them to Nest position
     def init_agents(self, N_agents):
         self.agents = []
